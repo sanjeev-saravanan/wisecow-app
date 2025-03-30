@@ -7,6 +7,7 @@ on:
 env:
   DOCKERHUB_REPO: sanjeev072/wisecow-app
   IMAGE_TAG: ${{ github.sha }}
+  AWS_REGION: us-east-1
 
 jobs:
   build-and-push:
@@ -32,21 +33,30 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.28.0'  # Pinned version for stability
-
-      - name: Configure EKS access
+      - name: Install AWS CLI and kubectl
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config  # Critical security permission
+          # Install AWS CLI v2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
           
-          # Verify cluster access
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure EKS Access
+        run: |
+          aws eks update-kubeconfig --name wisecow-cluster --region ${{ env.AWS_REGION }}
           kubectl config current-context
           kubectl cluster-info
-          kubectl get nodes  # This confirms we're using existing cluster
+          kubectl get nodes
 
       - name: Deploy to Kubernetes
         run: |
@@ -58,3 +68,4 @@ jobs:
           # Verify deployment
           kubectl rollout status deployment/wisecow-app
           kubectl get pods -o wide
+          kubectl get svc -o wide
