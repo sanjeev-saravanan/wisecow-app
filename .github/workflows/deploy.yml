@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          path: 'app-source'  # Explicit checkout path
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -26,7 +24,6 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          cd app-source
           docker build -t $DOCKERHUB_REPO:$IMAGE_TAG .
           docker push $DOCKERHUB_REPO:$IMAGE_TAG
 
@@ -34,11 +31,6 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          path: 'app-source'  # Consistent path with build job
-
       - name: Install AWS CLI and kubectl
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -62,16 +54,12 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Workspace contents:"
-          ls -la app-source/
+          # Apply configurations
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+          kubectl apply -f ingress.yaml
           
-          # Apply configurations using explicit paths
-          kubectl apply -f app-source/deployment.yaml
-          kubectl apply -f app-source/service.yaml
-          kubectl apply -f app-source/ingress.yaml
-          
-          # Verify deployment
-          kubectl rollout status deployment/wisecow-app
+          # Verify deployment (using correct resource name)
+          kubectl rollout status deployment/wisecow-deployment
           kubectl get pods -o wide
           kubectl get svc -o wide
