@@ -25,28 +25,20 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build -t $DOCKERHUB_REPO:$IMAGE_TAG .
-          docker tag $DOCKERHUB_REPO:$IMAGE_TAG $DOCKERHUB_REPO:latest
           docker push $DOCKERHUB_REPO:$IMAGE_TAG
-          docker push $DOCKERHUB_REPO:latest
 
   deploy-to-eks:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Install and configure tools
+      - name: Install AWS CLI and kubectl
         run: |
-          # Update AWS CLI (handles pre-installed version)
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
           
-          # Install kubectl
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-          
-          # Verify installations
-          aws --version
-          kubectl version --client
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -58,18 +50,12 @@ jobs:
       - name: Configure EKS access
         run: |
           aws eks update-kubeconfig --name wisecow-cluster --region ${{ env.AWS_REGION }}
-          kubectl config current-context
-          kubectl cluster-info
           kubectl get nodes
 
       - name: Deploy to Kubernetes
         run: |
-          # Apply configurations
+          cd ${{ github.workspace }}
           kubectl apply -f deployment.yaml
           kubectl apply -f service.yaml
           kubectl apply -f ingress.yaml
-          
-          # Verify deployment
           kubectl rollout status deployment/wisecow-app
-          kubectl get pods -o wide
-          kubectl get svc -o wide
