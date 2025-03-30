@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  DOCKERHUB_REPO: sanjeev072/wisecow-app  # Replace with your Docker Hub repo
+  DOCKERHUB_REPO: sanjeev072/wisecow-app
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -34,16 +34,27 @@ jobs:
     steps:
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'  # Pinned version for stability
 
       - name: Configure EKS access
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config  # Critical security permission
+          
+          # Verify cluster access
           kubectl config current-context
+          kubectl cluster-info
+          kubectl get nodes  # This confirms we're using existing cluster
 
       - name: Deploy to Kubernetes
         run: |
+          # Apply configurations
           kubectl apply -f deployment.yaml
           kubectl apply -f service.yaml
           kubectl apply -f ingress.yaml
+          
+          # Verify deployment
           kubectl rollout status deployment/wisecow-app
+          kubectl get pods -o wide
