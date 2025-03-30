@@ -31,6 +31,9 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Install AWS CLI and kubectl
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -52,14 +55,17 @@ jobs:
           aws eks update-kubeconfig --name wisecow-cluster --region ${{ env.AWS_REGION }}
           kubectl get nodes
 
+      - name: Debug file paths
+        run: |
+          echo "Listing files in workspace:"
+          ls -al
+
       - name: Deploy to Kubernetes
         run: |
-          # Apply configurations
-          kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml
-          kubectl apply -f ingress.yaml
+          kubectl apply -f ./deployment.yaml
+          kubectl apply -f ./service.yaml
+          kubectl apply -f ./ingress.yaml
           
-          # Verify deployment (using correct resource name)
           kubectl rollout status deployment/wisecow-deployment
           kubectl get pods -o wide
           kubectl get svc -o wide
