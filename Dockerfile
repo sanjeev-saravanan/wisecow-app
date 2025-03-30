@@ -7,13 +7,13 @@ COPY wisecow.sh /app/wisecow.sh
 
 # Final stage
 FROM alpine:edge
-# Install minimal runtime dependencies (optional, see notes)
+# Install minimal runtime dependencies
 RUN apk add --no-cache perl && \
     rm -rf /var/cache/apk/*
 # Copy necessary binaries and data
 COPY --from=builder /usr/bin/fortune /usr/bin/fortune
 COPY --from=builder /usr/share/fortune /usr/share/fortune
-COPY --from=builder /usr/games/cowsay /usr/games/cowsay
+COPY --from=builder /usr/bin/cowsay /usr/bin/cowsay  # Changed from /usr/games/cowsay
 COPY --from=builder /usr/lib/perl5 /usr/lib/perl5
 COPY --from=builder /usr/bin/nc /usr/bin/nc
 COPY --from=builder /app/wisecow.sh /app/wisecow.sh
@@ -22,8 +22,8 @@ WORKDIR /app
 # Make script executable
 RUN chmod +x /app/wisecow.sh
 # Strip binaries to reduce size
-RUN strip /usr/bin/fortune /usr/games/cowsay /usr/bin/nc
+RUN strip /usr/bin/fortune /usr/bin/cowsay /usr/bin/nc  # Updated path
 # Expose port
 EXPOSE 4499
-# Run the script (no bash needed if shebang is adjusted)
+# Run the script
 CMD ["/app/wisecow.sh"]
