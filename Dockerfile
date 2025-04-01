@@ -1,10 +1,10 @@
-# Build stage (only for building the script, not needed for cowsay)
+# Build stage
 FROM alpine:edge AS builder
 COPY wisecow.sh /app/wisecow.sh
 
 # Final stage
 FROM alpine:edge
-# Install ALL dependencies here (simpler than copying files)
+# Installing dependencies here
 RUN apk update && \
     apk add --no-cache \
         bash \
